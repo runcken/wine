@@ -1,5 +1,8 @@
+import argparse
+import os
 import datetime
 from collections import defaultdict
+from dotenv import load_dotenv
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 
 import pandas
@@ -7,21 +10,22 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 
 if __name__ == '__main__':
+    foundation_date = 1920
     now = datetime.datetime.now()
-    delta = now.year-1920
+    time_period = now.year - foundation_date
 
-    delta = int(delta)
+    time_period = int(time_period)
 
-    last_two = delta % 100
-    last_digit = delta % 10
+    last_two = time_period % 100
+    last_digit = time_period % 10
     if 11 <= last_two <= 14:
-        delta_text = f'{delta} лет'
+        time_period_text = f'{time_period} лет'
     elif last_digit == 1:
-        delta_text = f'{delta} год'
+        time_period_text = f'{time_period} год'
     elif 2 <= last_digit <= 4:
-        delta_text = f'{delta} года'
+        time_period_text = f'{time_period} года'
     else:
-        delta_text = f'{delta} лет'
+        time_period_text = f'{time_period} лет'
 
     env = Environment(
         loader=FileSystemLoader('.'),
@@ -30,8 +34,23 @@ if __name__ == '__main__':
 
     template = env.get_template('template.html')
 
+    load_dotenv()
+    xlsx_file = os.getenv('PRODUCT_FILE')
+
+    parser = argparse.ArgumentParser(
+        description='Вывод списка продукции на сайте'
+        )
+    parser.add_argument(
+        '--xlsx_file_name',
+        type=str,
+        default=xlsx_file,
+        help=f'id запуска(по умолчанию: {xlsx_file})'
+        )
+    args = parser.parse_args()
+    xlsx_file_name = args.xlsx_file_name
+
     wines = pandas.read_excel(
-        'wine3.xlsx',
+        xlsx_file_name,
         sheet_name='Лист1',
         na_values=['N/A', 'NA'],
         keep_default_na=False
@@ -45,7 +64,7 @@ if __name__ == '__main__':
 
     rendered_page = template.render(
         grouped_wines=grouped_wines,
-        time_period=delta_text
+        time_period=time_period_text
     )
 
     with open('index.html', 'w', encoding="utf8") as file:
