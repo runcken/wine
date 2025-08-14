@@ -1,6 +1,6 @@
 import argparse
-import os
 import datetime
+import os
 from collections import defaultdict
 from dotenv import load_dotenv
 from http.server import HTTPServer, SimpleHTTPRequestHandler
@@ -9,48 +9,27 @@ import pandas
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 
-if __name__ == '__main__':
+def get_winery_age_text():
     foundation_date = 1920
     now = datetime.datetime.now()
-    time_period = now.year - foundation_date
+    winery_age = now.year - foundation_date
 
-    time_period = int(time_period)
-
-    last_two = time_period % 100
-    last_digit = time_period % 10
+    last_two = winery_age % 100
+    last_digit = winery_age % 10
     if 11 <= last_two <= 14:
-        time_period_text = f'{time_period} лет'
+        winery_age_text = f'{winery_age} лет'
     elif last_digit == 1:
-        time_period_text = f'{time_period} год'
+        winery_age_text = f'{winery_age} год'
     elif 2 <= last_digit <= 4:
-        time_period_text = f'{time_period} года'
+        winery_age_text = f'{winery_age} года'
     else:
-        time_period_text = f'{time_period} лет'
+        winery_age_text = f'{winery_age} лет'
+    return winery_age_text
 
-    env = Environment(
-        loader=FileSystemLoader('.'),
-        autoescape=select_autoescape(['html', 'xml'])
-    )
 
-    template = env.get_template('template.html')
-
-    load_dotenv()
-    xlsx_file = os.getenv('PRODUCT_FILE')
-
-    parser = argparse.ArgumentParser(
-        description='Вывод списка продукции на сайте'
-        )
-    parser.add_argument(
-        '--xlsx_file_name',
-        type=str,
-        default=xlsx_file,
-        help=f'id запуска(по умолчанию: {xlsx_file})'
-        )
-    args = parser.parse_args()
-    xlsx_file_name = args.xlsx_file_name
-
+def get_rendered_page(path, template):
     wines = pandas.read_excel(
-        xlsx_file_name,
+        path,
         sheet_name='Лист1',
         na_values=['N/A', 'NA'],
         keep_default_na=False
@@ -64,11 +43,43 @@ if __name__ == '__main__':
 
     rendered_page = template.render(
         grouped_wines=grouped_wines,
-        time_period=time_period_text
+        winery_age=get_winery_age_text()
     )
 
-    with open('index.html', 'w', encoding="utf8") as file:
-        file.write(rendered_page)
+    return rendered_page
+
+
+def main():
+    env = Environment(
+        loader=FileSystemLoader('.'),
+        autoescape=select_autoescape(['html', 'xml'])
+    )
+
+    template = env.get_template('template.html')
+
+    load_dotenv()
+    xlsx_file = os.getenv('PRODUCT_FILE')
+
+    parser = argparse.ArgumentParser(
+        description='Вывод списка продукции на сайте'
+    )
+
+    parser.add_argument(
+        '--path',
+        type=str,
+        default=xlsx_file,
+        help=f'путь к файлу(по умолчанию: {xlsx_file})'
+    )
+
+    args = parser.parse_args()
+    path = args.path
+
+    with open('index.html', 'w', encoding='utf8') as file:
+        file.write(get_rendered_page(path, template))
 
     server = HTTPServer(('0.0.0.0', 8000), SimpleHTTPRequestHandler)
     server.serve_forever()
+
+
+if __name__ == '__main__':
+    main()
