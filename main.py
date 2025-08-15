@@ -9,6 +9,23 @@ import pandas
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 
+def get_path(file):
+    parser = argparse.ArgumentParser(
+        description='Вывод списка продукции на сайте'
+    )
+
+    parser.add_argument(
+        '--path',
+        type=str,
+        default=file,
+        help=f'путь к файлу(по умолчанию: {file})'
+    )
+
+    args = parser.parse_args()
+    path = args.path
+    return path
+
+
 def get_winery_age_text():
     foundation_date = 1920
     now = datetime.datetime.now()
@@ -27,14 +44,7 @@ def get_winery_age_text():
     return winery_age_text
 
 
-def get_rendered_page(path, template):
-    wines = pandas.read_excel(
-        path,
-        sheet_name='Лист1',
-        na_values=['N/A', 'NA'],
-        keep_default_na=False
-    )
-
+def get_rendered_page(wines, template, winery_age):
     grouped_wines = defaultdict(list)
 
     for row in wines.to_dict('records'):
@@ -43,13 +53,25 @@ def get_rendered_page(path, template):
 
     rendered_page = template.render(
         grouped_wines=grouped_wines,
-        winery_age=get_winery_age_text()
+        winery_age=winery_age
     )
 
     return rendered_page
 
 
 def main():
+    load_dotenv()
+    file = os.getenv('INPUT_FILE')
+
+    wines = pandas.read_excel(
+        get_path(file),
+        sheet_name='Лист1',
+        na_values=['N/A', 'NA'],
+        keep_default_na=False
+    )
+
+    winery_age = get_winery_age_text()
+
     env = Environment(
         loader=FileSystemLoader('.'),
         autoescape=select_autoescape(['html', 'xml'])
@@ -57,25 +79,8 @@ def main():
 
     template = env.get_template('template.html')
 
-    load_dotenv()
-    xlsx_file = os.getenv('PRODUCT_FILE')
-
-    parser = argparse.ArgumentParser(
-        description='Вывод списка продукции на сайте'
-    )
-
-    parser.add_argument(
-        '--path',
-        type=str,
-        default=xlsx_file,
-        help=f'путь к файлу(по умолчанию: {xlsx_file})'
-    )
-
-    args = parser.parse_args()
-    path = args.path
-
     with open('index.html', 'w', encoding='utf8') as file:
-        file.write(get_rendered_page(path, template))
+        file.write(get_rendered_page(wines, template, winery_age))
 
     server = HTTPServer(('0.0.0.0', 8000), SimpleHTTPRequestHandler)
     server.serve_forever()
