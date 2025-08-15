@@ -9,7 +9,7 @@ import pandas
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 
-def get_path(file):
+def get_path(filename):
     parser = argparse.ArgumentParser(
         description='Вывод списка продукции на сайте'
     )
@@ -17,8 +17,8 @@ def get_path(file):
     parser.add_argument(
         '--path',
         type=str,
-        default=file,
-        help=f'путь к файлу(по умолчанию: {file})'
+        default=filename,
+        help=f'путь к файлу(по умолчанию: {filename})'
     )
 
     args = parser.parse_args()
@@ -61,10 +61,10 @@ def get_rendered_page(wines, template, winery_age):
 
 def main():
     load_dotenv()
-    file = os.getenv('INPUT_FILE')
+    filename = os.getenv('INPUT_FILE')
 
     wines = pandas.read_excel(
-        get_path(file),
+        get_path(filename),
         sheet_name='Лист1',
         na_values=['N/A', 'NA'],
         keep_default_na=False
